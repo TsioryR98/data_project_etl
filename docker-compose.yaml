@@ -9,11 +9,12 @@ x-airflow-common:
   build: ./airflow
   environment:
     &airflow-common-env
-    AIRFLOW__CORE__EXECUTOR: CeleryExecutor
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor #CeleryExecutor
     AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
     AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
     AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:airflow@postgres/airflow
     AIRFLOW__CORE__FERNET_KEY: ''
+    AIRFLOW__CELERY__BROKER_URL: redis://:@redis:6379/0
     AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
     AIRFLOW__CORE__LOAD_EXAMPLES: 'false'  ##TEST OK DAGS EXAMPLES OK
     AIRFLOW__CORE__EXECUTION_API_SERVER_URL: http://airflow-apiserver:8080/execution/
@@ -26,12 +27,28 @@ x-airflow-common:
     - ${AIRFLOW_PROJ_DIR:-.}/logs:/opt/airflow/logs
     - ${AIRFLOW_PROJ_DIR:-.}/config:/opt/airflow/config
     - ${AIRFLOW_PROJ_DIR:-.}/plugins:/opt/airflow/plugins
+    - ${AIRFLOW_PROJ_DIR:-.}/scripts:/opt/airflow/scripts
+    - ${AIRFLOW_PROJ_DIR:-.}/airflow-export:/opt/airflow/airflow-export
+
+
   depends_on:
     &airflow-common-depends-on
     postgres:
       condition: service_healthy
 
 services:
+    # REDIS SERVICES
+  #redis:
+   # image: redis:7.2-bookworm
+  #  expose:
+   #   - 6379
+   # healthcheck:
+  #    test: ["CMD", "redis-cli", "ping"]
+   #   interval: 10s
+   #   timeout: 30s
+  #    retries: 50
+   #   start_period: 30s
+  #  restart: always
   #POSTGRES SERVICES
   postgres:
     image: postgres:15
@@ -42,6 +59,8 @@ services:
       POSTGRES_DB: airflow 
     volumes:
       - postgres_data:/var/lib/postgresql/data:Z #docker volume
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql  # Initialisation
+
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U airflow -d airflow"]
       interval: 10s
@@ -59,7 +78,7 @@ services:
       - "8888:8888"
     volumes:
       - ./notebooks:/home/jovyan/work  
-      - airflow_export:/home/jovyan/shared_exports
+      - ./airflow/airflow-export:/home/jovyan/shared_exports
     user: "1000:0"
     profiles: ["notebook"]
 
@@ -84,6 +103,8 @@ services:
       retries: 5
     volumes:
       - ./metabase/dashboards:/metabase-data/dashboards
+      - ./airflow/airflow-export:/metabase-imports
+
     profiles: ["dataviz"]
 
   # all AIRFLOW SERVICES api web server / scheduler / dags ....
@@ -100,9 +121,12 @@ services:
       retries: 5
       start_period: 120s
     restart: always
-    volumes:
-      - ./airflow/dags:/opt/airflow/dags   # Bind mount
+    volumes:   #bind
+      - ./airflow/dags:/opt/airflow/dags
       - ./airflow/plugins:/opt/airflow/plugins
+      - ./airflow/scripts:/opt/airflow/scripts
+      - ./airflow/airflow-export:/opt/airflow/airflow-export
+
     depends_on:
       <<: *airflow-common-depends-on
       airflow-init:
@@ -125,6 +149,11 @@ services:
       airflow-init:
         condition: service_completed_successfully
     #user: "${AIRFLOW_UID:-1000}:${AIRFLOW_GID:-0}"
+    volumes:   #bind
+      - ./airflow/dags:/opt/airflow/dags
+      - ./airflow/plugins:/opt/airflow/plugins
+      - ./airflow/scripts:/opt/airflow/scripts
+      - ./airflow/airflow-export:/opt/airflow/airflow-export
 
   airflow-dag-processor:
     <<: *airflow-common
@@ -142,6 +171,12 @@ services:
       airflow-init:
         condition: service_completed_successfully
     #user: "${AIRFLOW_UID:-1000}:${AIRFLOW_GID:-0}"
+    volumes:   #bind
+      - ./airflow/dags:/opt/airflow/dags
+      - ./airflow/plugins:/opt/airflow/plugins
+      - ./airflow/scripts:/opt/airflow/scripts
+      #- airflow_export:/opt/airflow/airflow_export #change into bind mount if necessary
+      - ./airflow/airflow-export:/opt/airflow/airflow-export
 
   airflow-worker:
     <<: *airflow-common
@@ -164,10 +199,11 @@ services:
       airflow-init:
         condition: service_completed_successfully
     #user: "${AIRFLOW_UID:-1000}:${AIRFLOW_GID:-0}"
-    volumes:
-      - ./airflow/dags:/opt/airflow/dags                # Bind mount
-      - airflow_export:/opt/airflow/export_data         # Volume managé (export)
-      - airflow_logs:/opt/airflow/logs                  # Volume managé (logs)
+    volumes:   #bind
+      - ./airflow/dags:/opt/airflow/dags
+      - ./airflow/plugins:/opt/airflow/plugins
+      - ./airflow/scripts:/opt/airflow/scripts
+      - ./airflow/airflow-export:/opt/airflow/airflow-export
 
   airflow-triggerer:
     <<: *airflow-common
@@ -185,6 +221,11 @@ services:
       airflow-init:
         condition: service_completed_successfully
     #user: "${AIRFLOW_UID:-1000}:${AIRFLOW_GID:-0}"
+    volumes:   #bind
+      - ./airflow/dags:/opt/airflow/dags
+      - ./airflow/plugins:/opt/airflow/plugins
+      - ./airflow/scripts:/opt/airflow/scripts
+      - ./airflow/airflow-export:/opt/airflow/airflow-export
 
   airflow-init:
     <<: *airflow-common
@@ -243,14 +284,14 @@ services:
         echo
         echo "Creating missing opt dirs if missing:"
         echo
-        mkdir -v -p /opt/airflow/{logs,dags,plugins,config}
+        mkdir -v -p /opt/airflow/{logs,dags,plugins,config,scripts}
         echo
         echo "Airflow version:"
         /entrypoint airflow version
         echo
         echo "Files in shared volumes:"
         echo
-        ls -la /opt/airflow/{logs,dags,plugins,config}
+        ls -la /opt/airflow/{logs,dags,plugins,config,scripts}
         echo
         echo "Running airflow config list to create default config file if missing."
         echo
@@ -258,7 +299,7 @@ services:
         echo
         echo "Files in shared volumes:"
         echo
-        ls -la /opt/airflow/{logs,dags,plugins,config}
+        ls -la /opt/airflow/{logs,dags,plugins,config,scripts}
         echo
         echo "Change ownership of files in /opt/airflow to ${AIRFLOW_UID}:${AIRFLOW_GID}"
         echo
@@ -266,11 +307,11 @@ services:
         echo
         echo "Change ownership of files in shared volumes to ${AIRFLOW_UID}:${AIRFLOW_GID}"
         echo
-        chown -v -R "${AIRFLOW_UID}:${AIRFLOW_GID}" /opt/airflow/{logs,dags,plugins,config}
+        chown -v -R "${AIRFLOW_UID}:${AIRFLOW_GID}" /opt/airflow/{logs,dags,plugins,config,scripts}
         echo
         echo "Files in shared volumes:"
         echo
-        ls -la /opt/airflow/{logs,dags,plugins,config}
+        ls -la /opt/airflow/{logs,dags,plugins,config,scripts}
 
     # yamllint enable rule:line-length
     environment:
@@ -287,7 +328,6 @@ services:
 
 volumes:
   postgres_data:  #  PostgreSQL
-  airflow_export: #   exports Excel
-  airflow_logs:   #   logs
+  #airflow_export: #   exports Excel inside docker volumes
 
   
