@@ -1,0 +1,10 @@
+{"timestamp":"2025-07-02T17:55:04.781995","level":"info","event":"DAG bundles loaded: dags-folder, example_dags","logger":"airflow.dag_processing.bundles.manager.DagBundlesManager"}
+{"timestamp":"2025-07-02T17:55:04.785438","level":"info","event":"Filling up the DagBag from /home/tsioryr/HEI-Etudes/data-airflow/airflow/dags/meteo_etl_dag.py","logger":"airflow.models.dagbag.DagBag"}
+{"timestamp":"2025-07-02T17:55:05.135208Z","level":"info","event":"Task instance is in running state","chan":"stdout","logger":"task"}
+{"timestamp":"2025-07-02T17:55:05.135521Z","level":"info","event":" Previous state of the Task instance: TaskInstanceState.QUEUED","chan":"stdout","logger":"task"}
+{"timestamp":"2025-07-02T17:55:05.135731Z","level":"info","event":"Current task name:fetch_meteo_data","chan":"stdout","logger":"task"}
+{"timestamp":"2025-07-02T17:55:05.135924Z","level":"info","event":"Dag name:meteo_etl_dag","chan":"stdout","logger":"task"}
+{"timestamp":"2025-07-02T17:55:05.841789","level":"info","event":"Done. Returned value was: None","logger":"airflow.task.operators.airflow.providers.standard.operators.python.PythonOperator"}
+{"timestamp":"2025-07-02T17:55:05.899547Z","level":"info","event":"Task instance in success state","chan":"stdout","logger":"task"}
+{"timestamp":"2025-07-02T17:55:05.899850Z","level":"info","event":" Previous state of the Task instance: TaskInstanceState.RUNNING","chan":"stdout","logger":"task"}
+{"timestamp":"2025-07-02T17:55:05.900051Z","level":"info","event":"Task operator:<Task(PythonOperator): fetch_meteo_data>","chan":"stdout","logger":"task"}

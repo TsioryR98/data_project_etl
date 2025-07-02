@@ -3,4 +3,4 @@ structure.txt
 .idea
 .readme.md
 airflow/config
-airflow/airflow_venv
+airflow/airflow_env
