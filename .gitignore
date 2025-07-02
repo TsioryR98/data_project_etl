@@ -1,6 +1,8 @@
 .env
 structure.txt
 .idea
-.readme.md
-airflow/config
-airflow/airflow_env
+.readme.mdgit
+airflow_env/
+.venv/
+# Python
+__pycache__/
