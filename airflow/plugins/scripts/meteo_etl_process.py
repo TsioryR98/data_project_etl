@@ -5,7 +5,7 @@ from datetime import datetime
 from airflow.models import Variable
 from airflow.decorators import task
 import sys
-sys.path.insert(0, '/home/tsioryr/HEI-Etudes/data-airflow/airflow')
+sys.path.insert(0, '/opt/airflow/plugins/scripts')
 from plugins.scripts.town_mapping import town_mapping
 
 
@@ -44,10 +44,9 @@ def fetch_meteo_data():
     """
     df = pd.DataFrame(records_data)
     current_date = datetime.now().strftime("%Y-%m-%d_%H:%M")
-    filename = f"/home/tsioryr/HEI-Etudes/data-airflow/airflow/airflow-export/weather_{current_date}.csv"
-
+ 
     "for docker"
-    #filename = f"/opt/airflow/airflow-export/weather_{current_date}.csv"
+    filename = f"/opt/airflow/airflow-export/weather_{current_date}.csv"
     df.to_csv(filename, index=False)
     return filename
 
