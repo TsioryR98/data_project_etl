@@ -1,10 +1,10 @@
-
 import pandas as pd
 import requests
 from datetime import datetime
 from airflow.models import Variable
 from airflow.decorators import task
 import sys
+
 sys.path.insert(0, '/home/tsioryr/HEI-Etudes/data-airflow/airflow')
 from plugins.scripts.town_mapping import town_mapping
 
@@ -15,12 +15,10 @@ def fetch_meteo_data():
     EXTRACT DATA FROM API OPENWEATHERMAP
     """
     API_KEY = Variable.get("API_KEY")
-    records_data = []    #store data in a list
+    records_data = []  #store data in a list
     for location_id, town in town_mapping.items():
-        url = (
-            "https://api.openweathermap.org/data/2.5/weather?"
-            f"q={town}&units=metric&appid={API_KEY}"
-        )
+        url = ("https://api.openweathermap.org/data/2.5/weather?"
+               f"q={town}&units=metric&appid={API_KEY}")
 
         data = requests.get(url, timeout=10).json()
 
@@ -46,7 +44,6 @@ def fetch_meteo_data():
             "cloud_cover": data["clouds"]["all"],
             "timeS": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         })
-
     """
     load data to CSV file
     """
@@ -56,5 +53,3 @@ def fetch_meteo_data():
 
     df.to_csv(filename, index=False)
     return filename
-
-    
