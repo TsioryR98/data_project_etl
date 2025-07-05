@@ -37,7 +37,6 @@ with DAG(dag_id='meteo_etl_dag',
     """TRANSFORM TO STAR SCHEMA"""
     transform_result = transform_star_schema(aggregate_result)  # csv file
     """LOAD TO POSTGRES"""
-    star_schema_dir = transform_star_schema(aggregate_result)
     load_to_postgres_task = load_to_postgres(
         star_schema_dir=transform_result,
         postgres_conn_id="postgres_conn_data"

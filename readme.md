@@ -1,5 +1,7 @@
 ## https://docs.google.com/document/d/1L2uU0Qe0Chn4A5SNEY3TQrlpmORdedDf2DodPAnoTVg/edit?hl=fr&tab=t.0
 
+### GITHUB BRANCH = DEV
+# Airflow Project: Weather Data ETL
 ###  folder permission for airflow project and GID 0 only for airflow
 
 sudo chown -R 1000:0 /home/tsioryr/HEI-Etudes/data-airflow/airflow/{dags,logs,plugins,config,scripts,airflow_export}

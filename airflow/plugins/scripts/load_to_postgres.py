@@ -1,32 +1,29 @@
-import pandas as pd
-from airflow.decorators import task
 import os
+from airflow.decorators import task
 from airflow.providers.postgres.hooks.postgres import PostgresHook
-
 
 @task
 def load_to_postgres(star_schema_dir: str, postgres_conn_id: str) -> None:
     """
-    (dim_location, dim_time, fact_weather)
-    for tables PostgreSQL .
-    :param star_schema_dir
-    :param pg_conn_string: c
+    COPY (psycopg2).
     """
     hook = PostgresHook(postgres_conn_id=postgres_conn_id)
     conn = hook.get_conn()
+    cur  = conn.cursor()
 
-    dim_location_path = os.path.join(star_schema_dir, "dim_location.csv")
-    dim_time_path = os.path.join(star_schema_dir, "dim_time.csv")
-    fact_weather_path = os.path.join(star_schema_dir, "fact_weather.csv")
+    files = {
+        "dim_location": os.path.join(star_schema_dir, "dim_location.csv"),
+        "dim_time":     os.path.join(star_schema_dir, "dim_time.csv"),
+        "fact_weather": os.path.join(star_schema_dir, "fact_weather.csv"),
+    }
 
-    #  dim_location
-    df_dim_location = pd.read_csv(dim_location_path)
-    df_dim_location.to_sql("dim_location", engine, if_exists="replace", index=False)
+    for table, path in files.items():
+        with open(path, "r", encoding="utf-8") as f:
+            cur.copy_expert(
+                sql=f"COPY {table} FROM STDIN WITH CSV HEADER",
+                file=f
+            )
+        conn.commit()
 
-    #  dim_time
-    df_dim_time = pd.read_csv(dim_time_path)
-    df_dim_time.to_sql("dim_time", engine, if_exists="replace", index=False)
-
-    #  fact_weather
-    df_fact_weather = pd.read_csv(fact_weather_path)
-    df_fact_weather.to_sql("fact_weather", engine, if_exists="replace", index=False)
+    cur.close()
+    conn.close()
