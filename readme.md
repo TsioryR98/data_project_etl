@@ -8,29 +8,101 @@ sudo chown -R 999:999 /home/tsioryr/HEI-Etudes/data-airflow/postgres
 sudo chmod -R 777 /home/tsioryr/HEI-Etudes/data-airflow/postgres  # 
  (read/write only for postgres)
 
-| Champ                        | Description                              | Unité finale recommandée             |
-|------------------------------|------------------------------------------|---------------------------------------|
-| `location_id`                | Identifiant unique de la ville           | —                                    |
-| `ville`                      | Nom de la ville                          | —                                    |
-| `time` / `timestamp`         | Date et heure de la mesure               | ISO 8601 (ex: 2025-07-03T21:20:27Z) |
-| `temperature`                | Température moyenne ou instantanée       | °C                                   |
-| `temperature_max`            | Température maximale                     | °C                                   |
-| `temperature_min`            | Température minimale                     | °C                                   |
-| `temperature_feel`           | Température ressentie                    | °C                                   |
-| `apparent_temperature`       | Température apparente (historique)       | °C                                   |
-| `precipitation`              | Précipitations totales                   | mm                                   |
-| `rain`                       | Pluie (partie de précipitations)         | mm                                   |
-| `snowfall`                   | Chute de neige (historique)              | cm                                   |
-| `rain_day`                   | Quantité pluie journalière (OpenWeather) | mm                                   |
-| `weather_code`               | Code météo (ex: WMO)                     | — (code numérique ou catégorie)      |
-| `weather`                    | Description météo (ex: Clear, Rain)      | —                                    |
-| `humidity`                   | Humidité relative                        | %                                    |
-| `pression`                   | Pression atmosphérique                   | hPa                                  |
-| `wind_speed`                 | Vitesse moyenne du vent                  | km/h (converti depuis m/s si besoin) |
-| `wind_gusts`                 | Rafales de vent (historique)             | km/h                                 |
-| `cloud_cover` / `cloud_rate` | Couverture nuageuse (%)                  | %                                    |
-| `soil_temperature`           | Température du sol (historique)          | °C                                   |
+| Field               | Description                               | Recommended Final Unit                |
+|---------------------|-------------------------------------------|-------------------------------------|
+| `location_id`       | Unique city identifier                     | —                                   |
+| `city`              | City name                                | —                                   |
+| `time` / `timestamp` | Date and time of measurement              | ISO 8601 (e.g., 2025-07-03T21:20:27Z) |
+| `temperature`       | Average or instantaneous temperature      | °C                                  |
+| `temperature_feel`  | Feels-like temperature                     | °C                                  |
+| `apparent_temperature` | Apparent temperature (historical)          | °C                                  |
+| `precipitation`     | Total precipitation                        | mm                                  |
+| `rain`              | Rain (part of precipitation)               | mm                                  |
+| `snow`              | Snowfall (historical)                      | cm                                  |
+| `wind_speed`        | Average wind speed                         | km/h (converted from m/s if needed)|
+| `cloud_cover` | Cloud coverage (%)                       | %                                   |
+| `soil_temperature`  | Soil temperature (historical)              | °C                                  |
 
 
+### Units in Standard Metric System (°C, km/h, mm, hPa)
 
-###  Les unités en Système métrique standard (°C, km/h, mm, hPa)
+# Data Modeling
+
+## Star Schema
+
+### Fact Table: `fact_weather_daily`
+
+| Column               | Description                        |
+|----------------------|----------------------------------|
+| fact_id (PK)         | Unique identifier for the record |
+| location_id (FK)     | Foreign key to `dim_location`    |
+| date_id (FK)         | Foreign key to `dim_date`        |
+| apparent_temperature | Average apparent temperature     |
+| cloud_cover          | Average cloud coverage           |
+| precipitation        | Average precipitation            |
+| rain                 | Average rain                    |
+| snow                 | Average snow                    |
+| soil_temperature     | Average soil temperature         |
+| temperature          | Average temperature              |
+| wind_speed           | Average wind speed               |
+
+### Dimension Tables
+
+#### `dim_location`
+
+| Column         | Description                    |
+|----------------|-------------------------------|
+| location_id (PK)| Unique identifier of the location |
+| city           | City name                     |
+| region         | (Optional) Region             |
+| country        | (Optional) Country            |
+| latitude       | (Optional) Latitude           |
+| longitude      | (Optional) Longitude          |
+
+#### `dim_date`
+
+| Column       | Description                   |
+|--------------|-------------------------------|
+| date_id (PK) | Unique identifier of the date  |
+| date         | Date (YYYY-MM-DD)             |
+| year         | Year                         |
+| month        | Month                        |
+| day          | Day                          |
+| day_of_week  | Day of the week              |
+| quarter      | Quarter                      |
+
+---
+
+## Snowflake Schema
+
+### Fact Table: `fact_weather_daily` (same as star schema)
+
+### Dimension Tables
+
+#### `dim_location`
+
+| Column         | Description                    |
+|----------------|-------------------------------|
+| location_id (PK)| Unique identifier of the location |
+| city           | City name                     |
+| region_id (FK) | Foreign key to `dim_region`    |
+
+#### `dim_region`
+
+| Column        | Description                     |
+|---------------|--------------------------------|
+| region_id (PK)| Unique identifier of the region |
+| region_name   | Name of the region              |
+| country_id (FK)| Foreign key to `dim_country`    |
+
+#### `dim_country`
+
+| Column        | Description                    |
+|---------------|-------------------------------|
+| country_id (PK)| Unique identifier of the country |
+| country_name  | Name of the country            |
+
+#### `dim_date` (same as star schema)
+
+---
+
