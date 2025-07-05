@@ -1,3 +1,5 @@
+## https://docs.google.com/document/d/1L2uU0Qe0Chn4A5SNEY3TQrlpmORdedDf2DodPAnoTVg/edit?hl=fr&tab=t.0
+
 ###  folder permission for airflow project and GID 0 only for airflow
 
 sudo chown -R 1000:0 /home/tsioryr/HEI-Etudes/data-airflow/airflow/{dags,logs,plugins,config,scripts,airflow_export}
@@ -48,7 +50,7 @@ sudo chmod -R 777 /home/tsioryr/HEI-Etudes/data-airflow/postgres  #
 
 ### Dimension Tables
 
-#### `dim_location`
+ 
 
 | Column         | Description                    |
 |----------------|-------------------------------|
@@ -70,39 +72,6 @@ sudo chmod -R 777 /home/tsioryr/HEI-Etudes/data-airflow/postgres  #
 | day          | Day                          |
 | day_of_week  | Day of the week              |
 | quarter      | Quarter                      |
-
----
-
-## Snowflake Schema
-
-### Fact Table: `fact_weather_daily` (same as star schema)
-
-### Dimension Tables
-
-#### `dim_location`
-
-| Column         | Description                    |
-|----------------|-------------------------------|
-| location_id (PK)| Unique identifier of the location |
-| city           | City name                     |
-| region_id (FK) | Foreign key to `dim_region`    |
-
-#### `dim_region`
-
-| Column        | Description                     |
-|---------------|--------------------------------|
-| region_id (PK)| Unique identifier of the region |
-| region_name   | Name of the region              |
-| country_id (FK)| Foreign key to `dim_country`    |
-
-#### `dim_country`
-
-| Column        | Description                    |
-|---------------|-------------------------------|
-| country_id (PK)| Unique identifier of the country |
-| country_name  | Name of the country            |
-
-#### `dim_date` (same as star schema)
 
 ---
 

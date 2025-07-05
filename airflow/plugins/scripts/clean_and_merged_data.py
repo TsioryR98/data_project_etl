@@ -8,6 +8,11 @@ from scripts.town_mapping import town_mapping
 
 @task
 def clean_and_merged_data(historical_csv: str, openweather_csv: str) -> str:
+
+    """
+    CLEAN AND MERGE DATA FROM HISTORICAL CSV AND OPENWEATHER CSV
+    """
+
     df_historical = pd.read_csv(historical_csv)
     df_recent = pd.read_csv(openweather_csv)
 
