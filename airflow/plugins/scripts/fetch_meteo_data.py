@@ -4,13 +4,12 @@ from datetime import datetime
 from airflow.models import Variable
 from airflow.decorators import task
 import sys
-
-sys.path.insert(0, '/home/tsioryr/HEI-Etudes/data-airflow/airflow')
-from plugins.scripts.town_mapping import town_mapping
+sys.path.insert(0, '/home/tsioryr/HEI-Etudes/data-airflow/airflow/plugins')
+from scripts.town_mapping import town_mapping
 
 
 @task
-def fetch_meteo_data():
+def fetch_meteo_data() -> str:
     """
     EXTRACT DATA FROM API OPENWEATHERMAP
     """
@@ -29,10 +28,10 @@ def fetch_meteo_data():
 
         records_data.append({
             "location_id": location_id,
-            "ville": data["name"],
+            "city": data["name"],
             "temperature": data["main"]["temp"],
             "humidity": data["main"]["humidity"],
-            "pression": data["main"]["pressure"],
+            "pressure": data["main"]["pressure"],
             "weather": data["weather"][0]["main"],
             "temperature_max": data["main"]["temp_max"],
             "temperature_min": data["main"]["temp_min"],
@@ -42,14 +41,14 @@ def fetch_meteo_data():
             "snow": snow_1h,
             "precipitation": precipitation_1h,
             "cloud_cover": data["clouds"]["all"],
-            "timeS": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            "time": pd.Timestamp.now().floor("H")
         })
     """
     load data to CSV file
     """
-    df = pd.DataFrame(records_data)
+    df_recent = pd.DataFrame(records_data)
     current_date = datetime.now().strftime("%Y-%m-%d_%H:%M")
-    filename = f"/home/tsioryr/HEI-Etudes/data-airflow/airflow/airflow-export/weather_{current_date}.csv"
+    filename = f"/home/tsioryr/HEI-Etudes/data-airflow/airflow/tmp/weather_{current_date}.csv"
 
-    df.to_csv(filename, index=False)
+    df_recent.to_csv(filename, index=False)
     return filename

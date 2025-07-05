@@ -2,23 +2,32 @@ from airflow import DAG
 from datetime import datetime, timedelta
 import sys
 
-sys.path.insert(0, '/home/tsioryr/HEI-Etudes/data-airflow/airflow')
-from airflow.plugins.scripts.fetch_meteo_data import fetch_meteo_data
-from airflow.decorators import task
+sys.path.insert(0, '/home/tsioryr/HEI-Etudes/data-airflow/airflow/plugins')
+from scripts.fetch_meteo_data import fetch_meteo_data
+from scripts.load_historical_data import load_historical_data
+from scripts.clean_and_merged_data import clean_and_merged_data
 
 default_args = {
     'start_date': datetime(2024, 1, 1),
     'owner': 'airflow',
     'depends_on_past': False,
-    'retries': 1,
-    'retry_delay': timedelta(minutes=5),
+    'retries': 0,
 }
 
 with DAG(dag_id='meteo_etl_dag',
          description='ETL 6:00 am',
-         schedule='*/5 * * * *',
+         schedule='* 6 * * *',  #every 6amn
          default_args=default_args,
          catchup=False,
          tags=['etl', 'meteo']) as dag:
+
     """FETCH METEO DATA FROM API"""
-    fetch_task = task(fetch_meteo_data)()
+    fetch_result = fetch_meteo_data()
+    """LOAD GLOBAL METEO DATA as static CSV"""
+    historical_data = load_historical_data()
+    """FINAL METEO DATA as  CSV"""
+    merged_result = clean_and_merged_data(historical_data, fetch_result) #dataframe + csv file
+
+    fetch_result >> merged_result
+    historical_data >> merged_result
+

@@ -26,7 +26,7 @@ x-airflow-common:
     - ${AIRFLOW_PROJ_DIR:-.}/plugins:/opt/airflow/plugins
     - ${AIRFLOW_PROJ_DIR:-.}/plugins/scripts:/opt/airflow/plugins/scripts
     - ${AIRFLOW_PROJ_DIR:-.}/config:/opt/airflow/config
-    - ${AIRFLOW_PROJ_DIR:-.}/airflow-export:/opt/airflow/airflow-export
+    - ${AIRFLOW_PROJ_DIR:-.}/tmp:/opt/airflow/tmp
 
 
   depends_on:
@@ -64,7 +64,7 @@ services:
       - "8888:8888"
     volumes:
       - ./notebooks:/home/jovyan/work  
-      - ./airflow/airflow-export:/home/jovyan/shared_exports
+      - ./airflow/tmp:/home/jovyan/shared_exports
     user: "1000:0"
     profiles: ["notebook"]
 
@@ -89,7 +89,7 @@ services:
       retries: 5
     volumes:
       - ./metabase/dashboards:/metabase-data/dashboards
-      - ./airflow/airflow-export:/metabase-imports
+      - ./airflow/tmp:/metabase-imports
 
     profiles: ["dataviz"]
 
@@ -111,7 +111,7 @@ services:
       - ./airflow/dags:/opt/airflow/dags
       - ./airflow/plugins:/opt/airflow/plugins
       - ./airflow/scripts:/opt/airflow/scripts
-      - ./airflow/airflow-export:/opt/airflow/airflow-export
+      - ./airflow/tmp:/opt/airflow/tmp
     environment:
       API_KEY: ${AIRFLOW_PROJ_DIR}
     depends_on:
@@ -140,7 +140,7 @@ services:
       - ./airflow/dags:/opt/airflow/dags
       - ./airflow/plugins:/opt/airflow/plugins
       - ./airflow/scripts:/opt/airflow/scripts
-      - ./airflow/airflow-export:/opt/airflow/airflow-export
+      - ./airflow/tmp:/opt/airflow/tmp
     environment:
       API_KEY: ${AIRFLOW_PROJ_DIR}
 
@@ -165,7 +165,7 @@ services:
       - ./airflow/plugins:/opt/airflow/plugins
       - ./airflow/scripts:/opt/airflow/scripts
       #- airflow_export:/opt/airflow/airflow_export #change into bind mount if necessary
-      - ./airflow/airflow-export:/opt/airflow/airflow-export
+      - ./airflow/tmp:/opt/airflow/tmp
     environment:
       API_KEY: ${AIRFLOW_PROJ_DIR}
 
@@ -195,7 +195,7 @@ services:
       - ./airflow/dags:/opt/airflow/dags
       - ./airflow/plugins:/opt/airflow/plugins
       - ./airflow/scripts:/opt/airflow/scripts
-      - ./airflow/airflow-export:/opt/airflow/airflow-export
+      - ./airflow/tmp:/opt/airflow/tmp
 
   airflow-triggerer:
     <<: *airflow-common
@@ -217,7 +217,7 @@ services:
       - ./airflow/dags:/opt/airflow/dags
       - ./airflow/plugins:/opt/airflow/plugins
       - ./airflow/scripts:/opt/airflow/scripts
-      - ./airflow/airflow-export:/opt/airflow/airflow-export
+      - ./airflow/tmp:/opt/airflow/tmp
     environment:
       API_KEY: ${AIRFLOW_PROJ_DIR}
 
