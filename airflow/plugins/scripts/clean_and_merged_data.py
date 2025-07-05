@@ -37,6 +37,18 @@ def clean_and_merged_data(historical_csv: str, openweather_csv: str) -> str:
     df_combined_data.sort_values(["location_id", "time"], inplace=True)
     df_combined_data.drop_duplicates(subset=["location_id", "time"], keep="last", inplace=True)
 
+    # drop  columns
+    cols_to_drop = ["humidity", "pressure", "temperature_max", "temperature_min", "weather"]
+    df_combined_data = df_combined_data.drop(columns=[col for col in cols_to_drop if col in df_combined_data.columns])
+
+    ordered_cols = [
+        "location_id", "city","apparent_temperature", "cloud_cover", "precipitation",
+        "rain", "snow", "soil_temperature", "temperature", "wind_speed" , "weather_code", "time"
+    ]
+
+    ordered_cols = [col for col in ordered_cols if col in df_combined_data.columns]
+    df_combined_data = df_combined_data[ordered_cols]
+
     current_date = datetime.now().strftime("%Y-%m-%d_%H:%M")
     file_output = f"/home/tsioryr/HEI-Etudes/data-airflow/airflow/data/combined_weather_{current_date}.csv"
 
