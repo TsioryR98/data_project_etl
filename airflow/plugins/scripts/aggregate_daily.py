@@ -4,6 +4,9 @@ from datetime import datetime
 
 @task
 def aggregate_daily(combined_csv: str) -> str:
+    """
+    DAILY AGGREGATION OF METEOROLOGICAL DATA from a combined CSV file.
+    """
     df = pd.read_csv(combined_csv)
 
     df["time"] = pd.to_datetime(df["time"], errors="coerce")
@@ -22,7 +25,7 @@ def aggregate_daily(combined_csv: str) -> str:
     #ordered columns
     ordered_cols = [
         "location_id", "city", "apparent_temperature", "cloud_cover", "precipitation",
-        "rain", "snow", "soil_temperature", "temperature", "wind_speed", "time"
+        "rain", "snow", "soil_temperature", "temperature", "wind_speed", "date"
     ]
     ordered_cols = [col for col in ordered_cols if col in df_daily.columns]
     df_daily = df_daily[ordered_cols]
