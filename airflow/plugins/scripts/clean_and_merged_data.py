@@ -1,6 +1,10 @@
 import pandas as pd
 from airflow.decorators import task
 from datetime import datetime
+import sys
+
+sys.path.insert(0, '/home/tsioryr/HEI-Etudes/data-airflow/airflow/plugins')
+from scripts.town_mapping import town_mapping
 
 @task
 def clean_and_merged_data(historical_csv: str, openweather_csv: str) -> str:
@@ -34,16 +38,18 @@ def clean_and_merged_data(historical_csv: str, openweather_csv: str) -> str:
         df_combined_data[col] = df_combined_data[col].combine_first(df_combined_data[f"{col}_src"])
         df_combined_data.drop(columns=f"{col}_src", inplace=True)
 
+    df_combined_data["city"] = df_combined_data["location_id"].map(town_mapping)
+
     df_combined_data.sort_values(["location_id", "time"], inplace=True)
     df_combined_data.drop_duplicates(subset=["location_id", "time"], keep="last", inplace=True)
 
     # drop  columns
-    cols_to_drop = ["humidity", "pressure", "temperature_max", "temperature_min", "weather"]
+    cols_to_drop = ["humidity", "pressure", "temperature_max", "temperature_min", "weather","weather_code",]
     df_combined_data = df_combined_data.drop(columns=[col for col in cols_to_drop if col in df_combined_data.columns])
 
     ordered_cols = [
         "location_id", "city","apparent_temperature", "cloud_cover", "precipitation",
-        "rain", "snow", "soil_temperature", "temperature", "wind_speed" , "weather_code", "time"
+        "rain", "snow", "soil_temperature", "temperature", "wind_speed", "time"
     ]
 
     ordered_cols = [col for col in ordered_cols if col in df_combined_data.columns]
