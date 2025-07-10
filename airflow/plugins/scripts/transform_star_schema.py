@@ -12,7 +12,7 @@ def transform_star_schema(combined_csv: str) -> str:
     """
 
     folder_date = datetime.now().strftime("%Y-%m-%d")       # snapshot label
-    base_dir= "/home/tsioryr/HEI-Etudes/data-airflow/airflow/data/star-schema"
+    base_dir= "/opt/airflow/data/star-schema"
     output_dir= f"{base_dir}/{folder_date}"
     os.makedirs(output_dir, exist_ok=True)      # if not exist, create the directory
 

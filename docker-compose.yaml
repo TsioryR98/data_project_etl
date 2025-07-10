@@ -21,14 +21,13 @@ x-airflow-common:
     _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:-}
     AIRFLOW_CONFIG: '/opt/airflow/config/airflow.cfg'
   volumes:
+    - ../raw:/opt/airflow/raw
     - ${AIRFLOW_PROJ_DIR:-.}/dags:/opt/airflow/dags
     - ${AIRFLOW_PROJ_DIR:-.}/logs:/opt/airflow/logs
     - ${AIRFLOW_PROJ_DIR:-.}/plugins:/opt/airflow/plugins
-    - ${AIRFLOW_PROJ_DIR:-.}/plugins/scripts:/opt/airflow/plugins/scripts
     - ${AIRFLOW_PROJ_DIR:-.}/config:/opt/airflow/config
     - ${AIRFLOW_PROJ_DIR:-.}/tmp:/opt/airflow/tmp
-
-
+    - ${AIRFLOW_PROJ_DIR:-.}/data:/opt/airflow/data
   depends_on:
     &airflow-common-depends-on
     postgres:
@@ -54,8 +53,7 @@ services:
       start_period: 5s
     restart: always
     ports:
-      - "5432:5432"  #mapped port for container
-    profiles: ["etl"]
+      - "5433:5432"  #mapped port for container
 
   # JUPYTER SERVICES
   jupyter:
@@ -89,14 +87,12 @@ services:
       retries: 5
     volumes:
       - ./metabase/dashboards:/metabase-data/dashboards
-      - ./airflow/tmp:/metabase-imports
 
     profiles: ["dataviz"]
 
   # all AIRFLOW SERVICES api web server / scheduler / dags ....
   airflow-apiserver:
     <<: *airflow-common
-    profiles: ["etl"]
     command: api-server
     ports:
       - "8080:8080"
@@ -107,11 +103,6 @@ services:
       retries: 5
       start_period: 120s
     restart: always
-    volumes:   #bind
-      - ./airflow/dags:/opt/airflow/dags
-      - ./airflow/plugins:/opt/airflow/plugins
-      - ./airflow/scripts:/opt/airflow/scripts
-      - ./airflow/tmp:/opt/airflow/tmp
     environment:
       API_KEY: ${AIRFLOW_PROJ_DIR}
     depends_on:
@@ -122,7 +113,6 @@ services:
 
   airflow-scheduler:
     <<: *airflow-common
-    profiles: ["etl"]
     command: scheduler
     healthcheck:
       test: ["CMD", "curl", "--fail", "http://localhost:8974/health"]
@@ -136,17 +126,11 @@ services:
       airflow-init:
         condition: service_completed_successfully
     #user: "${AIRFLOW_UID:-1000}:${AIRFLOW_GID:-0}"
-    volumes:   #bind
-      - ./airflow/dags:/opt/airflow/dags
-      - ./airflow/plugins:/opt/airflow/plugins
-      - ./airflow/scripts:/opt/airflow/scripts
-      - ./airflow/tmp:/opt/airflow/tmp
     environment:
       API_KEY: ${AIRFLOW_PROJ_DIR}
 
   airflow-dag-processor:
     <<: *airflow-common
-    profiles: ["etl"]
     command: dag-processor
     healthcheck:
       test: ["CMD-SHELL", 'airflow jobs check --job-type DagProcessorJob --hostname "$${HOSTNAME}"']
@@ -160,18 +144,11 @@ services:
       airflow-init:
         condition: service_completed_successfully
     #user: "${AIRFLOW_UID:-1000}:${AIRFLOW_GID:-0}"
-    volumes:   #bind
-      - ./airflow/dags:/opt/airflow/dags
-      - ./airflow/plugins:/opt/airflow/plugins
-      - ./airflow/scripts:/opt/airflow/scripts
-      #- airflow_export:/opt/airflow/airflow_export #change into bind mount if necessary
-      - ./airflow/tmp:/opt/airflow/tmp
     environment:
       API_KEY: ${AIRFLOW_PROJ_DIR}
 
   airflow-worker:
     <<: *airflow-common
-    profiles: ["etl"]
     command: celery worker
     healthcheck:
       test: ["CMD-SHELL",'celery --app airflow.providers.celery.executors.celery_executor.app inspect ping -d "celery@$${HOSTNAME}" || celery --app airflow.executors.celery_executor.app inspect ping -d "celery@$${HOSTNAME}"']
@@ -191,15 +168,8 @@ services:
       airflow-init:
         condition: service_completed_successfully
     #user: "${AIRFLOW_UID:-1000}:${AIRFLOW_GID:-0}"
-    volumes:   #bind
-      - ./airflow/dags:/opt/airflow/dags
-      - ./airflow/plugins:/opt/airflow/plugins
-      - ./airflow/scripts:/opt/airflow/scripts
-      - ./airflow/tmp:/opt/airflow/tmp
-
   airflow-triggerer:
     <<: *airflow-common
-    profiles: ["etl"]
     command: triggerer
     healthcheck:
       test: ["CMD-SHELL", 'airflow jobs check --job-type TriggererJob --hostname "$${HOSTNAME}"']
@@ -213,17 +183,11 @@ services:
       airflow-init:
         condition: service_completed_successfully
     #user: "${AIRFLOW_UID:-1000}:${AIRFLOW_GID:-0}"
-    volumes:   #bind
-      - ./airflow/dags:/opt/airflow/dags
-      - ./airflow/plugins:/opt/airflow/plugins
-      - ./airflow/scripts:/opt/airflow/scripts
-      - ./airflow/tmp:/opt/airflow/tmp
     environment:
       API_KEY: ${AIRFLOW_PROJ_DIR}
 
   airflow-init:
     <<: *airflow-common
-    profiles: ["etl"]
     entrypoint: /bin/bash
     # yamllint disable rule:line-length UID GID like host with id in the console
     command:
@@ -278,22 +242,24 @@ services:
         echo
         echo "Creating missing opt dirs if missing:"
         echo
-        mkdir -v -p /opt/airflow/{logs,dags,plugins,config,scripts}
+        mkdir -v -p /opt/airflow/{logs,dags,plugins,config,data,tmp}
         echo
         echo "Airflow version:"
         /entrypoint airflow version
         echo
         echo "Files in shared volumes:"
         echo
-        ls -la /opt/airflow/{logs,dags,plugins,config,scripts}
+        ls -la /opt/airflow/{logs,dags,plugins,config,data,tmp}
         echo
         echo "Running airflow config list to create default config file if missing."
         echo
         /entrypoint airflow config list >/dev/null
+        echo "Running airflow db upgrade to initialize the database schema."
+        /entrypoint airflow db upgrade
         echo
         echo "Files in shared volumes:"
         echo
-        ls -la /opt/airflow/{logs,dags,plugins,config,scripts}
+        ls -la /opt/airflow/{logs,dags,plugins,config,data,tmp}
         echo
         echo "Change ownership of files in /opt/airflow to ${AIRFLOW_UID}:${AIRFLOW_GID}"
         echo
@@ -301,11 +267,11 @@ services:
         echo
         echo "Change ownership of files in shared volumes to ${AIRFLOW_UID}:${AIRFLOW_GID}"
         echo
-        chown -v -R "${AIRFLOW_UID}:${AIRFLOW_GID}" /opt/airflow/{logs,dags,plugins,config,scripts}
+        chown -v -R "${AIRFLOW_UID}:${AIRFLOW_GID}" /opt/airflow/{logs,dags,plugins,config,data,tmp}
         echo
         echo "Files in shared volumes:"
         echo
-        ls -la /opt/airflow/{logs,dags,plugins,config,scripts}
+        ls -la /opt/airflow/{logs,dags,plugins,config,data,tmp}
 
     # yamllint enable rule:line-length
     environment:

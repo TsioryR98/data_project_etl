@@ -4,7 +4,7 @@ from datetime import datetime
 
 @task
 def load_historical_data() -> str:
-    file_path = "/home/tsioryr/HEI-Etudes/data-airflow/raw/weather_historical.csv"
+    file_path = "/opt/raw/weather_historical.csv"
     df = pd.read_csv(file_path, encoding="utf-8", low_memory=False)
 
     # clear any unwanted characters in column names

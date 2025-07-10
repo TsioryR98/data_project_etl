@@ -31,7 +31,7 @@ def aggregate_daily(combined_csv: str) -> str:
     df_daily = df_daily[ordered_cols]
 
     current_date = datetime.now().strftime("%Y-%m-%d_%H:%M")
-    output_file = f"/home/tsioryr/HEI-Etudes/data-airflow/airflow/data/aggregated_daily_{current_date}.csv"
+    output_file = f"/opt/airflow/data/aggregated_daily_{current_date}.csv"
     df_daily.to_csv(output_file, index=False)
 
     return output_file

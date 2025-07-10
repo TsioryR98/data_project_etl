@@ -2,7 +2,7 @@ from airflow import DAG
 from datetime import datetime, timedelta
 import sys
 
-sys.path.insert(0, '/home/tsioryr/HEI-Etudes/data-airflow/airflow/plugins')
+sys.path.insert(0, '/opt/airflow/plugins')
 from scripts.fetch_meteo_data import fetch_meteo_data
 from scripts.load_historical_data import load_historical_data
 from scripts.clean_and_merged_data import clean_and_merged_data

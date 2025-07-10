@@ -3,7 +3,7 @@ from airflow.decorators import task
 from datetime import datetime
 import sys
 
-sys.path.insert(0, '/home/tsioryr/HEI-Etudes/data-airflow/airflow/plugins')
+sys.path.insert(0, '/opt/airflow/plugins')
 from scripts.town_mapping import town_mapping
 
 @task
@@ -61,7 +61,7 @@ def clean_and_merged_data(historical_csv: str, openweather_csv: str) -> str:
     df_combined_data = df_combined_data[ordered_cols]
 
     current_date = datetime.now().strftime("%Y-%m-%d_%H:%M")
-    file_output = f"/home/tsioryr/HEI-Etudes/data-airflow/airflow/data/combined_weather_{current_date}.csv"
+    file_output = f"/opt/airflow/data/combined_weather_{current_date}.csv"
 
     df_combined_data.to_csv(file_output, index=False)
     return file_output
