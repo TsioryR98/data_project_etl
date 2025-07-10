@@ -1,28 +1,36 @@
-
-### GITHUB PREPROD BRANCH = main for simulating ETL with docker compose and in dev branch is local execution with python3 venv
 # Airflow Project: Weather Data ETL
 
-###  Project structure with docker compose
-|__data_airflow
-|____airflow
-|______|dags/
-|______|config/
-|______|logs/
-|______|plugins/
-|_________|scripts/
-|____metabase/
-|____notebook/
+### GITHUB BRANCHES
+- **PREPROD BRANCH (main)** : ETL simulation with docker compose
+- **DEV BRANCH** : Local execution with python3 venv
 
-# The images of airflow is made with Dockefile inside airflow directory for manual build from docker Hub registry and requirements.txt for pip install
+### PROJECT STRUCTURE (DOCKER COMPOSE VERSION)
 
-###  folder permission for airflow project and GID 0 only for airflow
-sudo chown -R 1000:0 /home/tsioryr/HEI-Etudes/data-airflow/airflow/{dags,logs,plugins,config,scripts,airflow_export}
-sudo chmod -R 777 /home/tsioryr/HEI-Etudes/data-airflow/airflow/{dags,logs,plugins,config,scripts,airflow_export}
-
-### Folder postgres must be 999:999 
-sudo chown -R 999:999 /home/tsioryr/HEI-Etudes/data-airflow/postgres
-sudo chmod -R 777 /home/tsioryr/HEI-Etudes/data-airflow/postgres  # 
- (read/write only for postgres)
+data_airflow/
+├── airflow/
+│ ├── dags/ # Airflow DAG files
+│ ├── config/ # Configuration files
+│ ├── logs/ # Execution logs
+│ ├── plugins/
+│ │ └── scripts/ # Custom scripts
+├── metabase/ # Metabase configuration
+├── notebook/ # Jupyter notebooks
+├── postgres/ # PostgreSQL data
 
 
+## Docker Setup
+- Custom Airflow image built from Dockerfile
+- Based on official Docker Hub registry image
+- Python dependencies in requirements.txt
 
+## Folder Permissions
+```bash
+# Airflow directories (UID 1000, GID 0)
+sudo chown -R 1000:0 ./airflow/{dags,logs,plugins,config,scripts,airflow_export}
+sudo chmod -R 777 ./airflow/{dags,logs,plugins,config,scripts,airflow_export}
+
+# PostgreSQL directory (UID/GID 999)
+sudo chown -R 999:999 ./postgres
+sudo chmod -R 777 ./postgres
+
+```
