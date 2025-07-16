@@ -1,79 +1,36 @@
-## https://docs.google.com/document/d/1L2uU0Qe0Chn4A5SNEY3TQrlpmORdedDf2DodPAnoTVg/edit?hl=fr&tab=t.0
-
-### GITHUB BRANCH = DEV
 # Airflow Project: Weather Data ETL
-###  folder permission for airflow project and GID 0 only for airflow
 
-sudo chown -R 1000:0 /home/tsioryr/HEI-Etudes/data-airflow/airflow/{dags,logs,plugins,config,scripts,airflow_export}
-sudo chmod -R 777 /home/tsioryr/HEI-Etudes/data-airflow/airflow/{dags,logs,plugins,config,scripts,airflow_export}
+### GITHUB BRANCHES
+- **PREPROD BRANCH (main)** : ETL simulation with docker compose
+- **DEV BRANCH** : Local execution with python3 venv
 
-### Folder postgres must be 999:999 
-sudo chown -R 999:999 /home/tsioryr/HEI-Etudes/data-airflow/postgres
-sudo chmod -R 777 /home/tsioryr/HEI-Etudes/data-airflow/postgres  # 
- (read/write only for postgres)
+### PROJECT STRUCTURE (DOCKER COMPOSE VERSION)
 
-| Field               | Description                               | Recommended Final Unit                |
-|---------------------|-------------------------------------------|-------------------------------------|
-| `location_id`       | Unique city identifier                     | —                                   |
-| `city`              | City name                                | —                                   |
-| `time` / `timestamp` | Date and time of measurement              | ISO 8601 (e.g., 2025-07-03T21:20:27Z) |
-| `temperature`       | Average or instantaneous temperature      | °C                                  |
-| `temperature_feel`  | Feels-like temperature                     | °C                                  |
-| `apparent_temperature` | Apparent temperature (historical)          | °C                                  |
-| `precipitation`     | Total precipitation                        | mm                                  |
-| `rain`              | Rain (part of precipitation)               | mm                                  |
-| `snow`              | Snowfall (historical)                      | cm                                  |
-| `wind_speed`        | Average wind speed                         | km/h (converted from m/s if needed)|
-| `cloud_cover` | Cloud coverage (%)                       | %                                   |
-| `soil_temperature`  | Soil temperature (historical)              | °C                                  |
+data_airflow/
+├── airflow/
+│ ├── dags/ # Airflow DAG files
+│ ├── config/ # Configuration files
+│ ├── logs/ # Execution logs
+│ ├── plugins/
+│ │ └── scripts/ # Custom scripts
+├── metabase/ # Metabase configuration
+├── notebook/ # Jupyter notebooks
+├── postgres/ # PostgreSQL data
 
 
-### Units in Standard Metric System (°C, km/h, mm, hPa)
+## Docker Setup
+- Custom Airflow image built from Dockerfile
+- Based on official Docker Hub registry image
+- Python dependencies in requirements.txt
 
-# Data Modeling
+## Folder Permissions
+```bash
+# Airflow directories (UID 1000, GID 0)
+sudo chown -R 1000:0 ./airflow/{dags,logs,plugins,config,scripts,airflow_export}
+sudo chmod -R 777 ./airflow/{dags,logs,plugins,config,scripts,airflow_export}
 
-## Star Schema
+# PostgreSQL directory (UID/GID 999)
+sudo chown -R 999:999 ./postgres
+sudo chmod -R 777 ./postgres
 
-### Fact Table: `fact_weather_daily`
-
-| Column               | Description                        |
-|----------------------|----------------------------------|
-| fact_id (PK)         | Unique identifier for the record |
-| location_id (FK)     | Foreign key to `dim_location`    |
-| date_id (FK)         | Foreign key to `dim_date`        |
-| apparent_temperature | Average apparent temperature     |
-| cloud_cover          | Average cloud coverage           |
-| precipitation        | Average precipitation            |
-| rain                 | Average rain                    |
-| snow                 | Average snow                    |
-| soil_temperature     | Average soil temperature         |
-| temperature          | Average temperature              |
-| wind_speed           | Average wind speed               |
-
-### Dimension Tables
-
- 
-
-| Column         | Description                    |
-|----------------|-------------------------------|
-| location_id (PK)| Unique identifier of the location |
-| city           | City name                     |
-| region         | (Optional) Region             |
-| country        | (Optional) Country            |
-| latitude       | (Optional) Latitude           |
-| longitude      | (Optional) Longitude          |
-
-#### `dim_date`
-
-| Column       | Description                   |
-|--------------|-------------------------------|
-| date_id (PK) | Unique identifier of the date  |
-| date         | Date (YYYY-MM-DD)             |
-| year         | Year                         |
-| month        | Month                        |
-| day          | Day                          |
-| day_of_week  | Day of the week              |
-| quarter      | Quarter                      |
-
----
-
+```
