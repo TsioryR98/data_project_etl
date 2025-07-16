@@ -8,3 +8,4 @@ airflow_env/
 __pycache__/
 *.py[cod]
 logs/
+token.txt

@@ -54,6 +54,7 @@ services:
     restart: always
     ports:
       - "5433:5432"  #mapped port for container
+    profiles: ["etl"]
 
   # JUPYTER SERVICES
   jupyter:
@@ -110,6 +111,7 @@ services:
       airflow-init:
         condition: service_completed_successfully
     #user: "${AIRFLOW_UID:-1000}:${AIRFLOW_GID:-0}"
+    profiles: ["etl"]
 
   airflow-scheduler:
     <<: *airflow-common
@@ -128,6 +130,7 @@ services:
     #user: "${AIRFLOW_UID:-1000}:${AIRFLOW_GID:-0}"
     environment:
       API_KEY: ${AIRFLOW_PROJ_DIR}
+    profiles: ["etl"]
 
   airflow-dag-processor:
     <<: *airflow-common
@@ -146,6 +149,7 @@ services:
     #user: "${AIRFLOW_UID:-1000}:${AIRFLOW_GID:-0}"
     environment:
       API_KEY: ${AIRFLOW_PROJ_DIR}
+    profiles: ["etl"]
 
   airflow-worker:
     <<: *airflow-common
@@ -168,6 +172,8 @@ services:
       airflow-init:
         condition: service_completed_successfully
     #user: "${AIRFLOW_UID:-1000}:${AIRFLOW_GID:-0}"
+    profiles: ["etl"]
+
   airflow-triggerer:
     <<: *airflow-common
     command: triggerer
@@ -185,11 +191,13 @@ services:
     #user: "${AIRFLOW_UID:-1000}:${AIRFLOW_GID:-0}"
     environment:
       API_KEY: ${AIRFLOW_PROJ_DIR}
+    profiles: ["etl"]
 
   airflow-init:
     <<: *airflow-common
     entrypoint: /bin/bash
     # yamllint disable rule:line-length UID GID like host with id in the console
+    profiles: ["etl"]
     command:
       - -c
       - |
