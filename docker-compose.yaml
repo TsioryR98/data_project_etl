@@ -1,40 +1,35 @@
-
+env_file:
+  - .env
 x-airflow-common:
   &airflow-common
-  
-  user: "${AIRFLOW_UID:-1000}:${AIRFLOW_GID:-0}"
-  #image: ${AIRFLOW_IMAGE_NAME:-apache/airflow:3.0.2-python3.10}
-
-  #if using dockerfile instead of PIP_ADDITIONNAL for other dependances
-  build: ./airflow
+  build: ./airflow  # Utilisation Dockerfile
   environment:
     &airflow-common-env
-    AIRFLOW__CORE__EXECUTOR: LocalExecutor #CeleryExecutor
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
     AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
     AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
     AIRFLOW__CORE__FERNET_KEY: ''
     AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
-    AIRFLOW__CORE__LOAD_EXAMPLES: 'false'  ##TEST OK DAGS EXAMPLES OK
+    AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
     AIRFLOW__CORE__EXECUTION_API_SERVER_URL: http://airflow-apiserver:8080/execution/
-
     AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: 'true'
     _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:-}
     AIRFLOW_CONFIG: '/opt/airflow/config/airflow.cfg'
   volumes:
     - ../raw:/opt/airflow/raw
-    - ${AIRFLOW_PROJ_DIR:-.}/dags:/opt/airflow/dags
-    - ${AIRFLOW_PROJ_DIR:-.}/logs:/opt/airflow/logs
-    - ${AIRFLOW_PROJ_DIR:-.}/plugins:/opt/airflow/plugins
-    - ${AIRFLOW_PROJ_DIR:-.}/config:/opt/airflow/config
-    - ${AIRFLOW_PROJ_DIR:-.}/tmp:/opt/airflow/tmp
-    - ${AIRFLOW_PROJ_DIR:-.}/data:/opt/airflow/data
+    - ./dags:/opt/airflow/dags
+    - ./logs:/opt/airflow/logs
+    - ./plugins:/opt/airflow/plugins
+    - ./config:/opt/airflow/config
+    - ./tmp:/opt/airflow/tmp
+    - ./data:/opt/airflow/data
+  user: "${AIRFLOW_UID:-1000}:0"
   depends_on:
     &airflow-common-depends-on
     postgres:
       condition: service_healthy
 
 services:
-  #POSTGRES SERVICES
   postgres:
     image: postgres:15
     user: "999:999"
@@ -43,20 +38,21 @@ services:
       POSTGRES_PASSWORD: airflow
       POSTGRES_DB: airflow 
     volumes:
-      - postgres_data:/var/lib/postgresql/data:Z #docker volume
-      - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql  # Initialisation
-
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U airflow -d airflow"]
+      test:
+        - CMD
+        - pg_isready
+        - '-U'
+        - airflow
       interval: 10s
       retries: 5
       start_period: 5s
-    restart: always
     ports:
-      - "5433:5432"  #mapped port for container
+      - "5433:5432"
     profiles: ["etl"]
 
-  # JUPYTER SERVICES
   jupyter:
     image: jupyter/scipy-notebook:latest  
     ports:
@@ -67,7 +63,6 @@ services:
     user: "1000:0"
     profiles: ["notebook"]
 
-  #METABASE SERVICES
   metabase:
     image: metabase/metabase:latest
     container_name: metabase
@@ -88,36 +83,39 @@ services:
       retries: 5
     volumes:
       - ./metabase/dashboards:/metabase-data/dashboards
-
     profiles: ["dataviz"]
 
-  # all AIRFLOW SERVICES api web server / scheduler / dags ....
   airflow-apiserver:
     <<: *airflow-common
     command: api-server
     ports:
       - "8080:8080"
     healthcheck:
-      test: ["CMD", "curl", "--fail", "http://localhost:8080/api/v2/version"]
+      test:
+        - CMD
+        - curl
+        - '--fail'
+        - http://localhost:8080/api/v2/version
       interval: 30s
       timeout: 10s
       retries: 5
       start_period: 120s
     restart: always
-    environment:
-      API_KEY: ${AIRFLOW_PROJ_DIR}
     depends_on:
       <<: *airflow-common-depends-on
       airflow-init:
         condition: service_completed_successfully
-    #user: "${AIRFLOW_UID:-1000}:${AIRFLOW_GID:-0}"
     profiles: ["etl"]
 
   airflow-scheduler:
     <<: *airflow-common
     command: scheduler
     healthcheck:
-      test: ["CMD", "curl", "--fail", "http://localhost:8974/health"]
+      test:
+        - CMD
+        - curl
+        - '--fail'
+        - http://localhost:8974/health
       interval: 30s
       timeout: 10s
       retries: 5
@@ -127,16 +125,15 @@ services:
       <<: *airflow-common-depends-on
       airflow-init:
         condition: service_completed_successfully
-    #user: "${AIRFLOW_UID:-1000}:${AIRFLOW_GID:-0}"
-    environment:
-      API_KEY: ${AIRFLOW_PROJ_DIR}
     profiles: ["etl"]
 
   airflow-dag-processor:
     <<: *airflow-common
     command: dag-processor
     healthcheck:
-      test: ["CMD-SHELL", 'airflow jobs check --job-type DagProcessorJob --hostname "$${HOSTNAME}"']
+      test:
+        - CMD-SHELL
+        - airflow jobs check --job-type DagProcessorJob --hostname "$${HOSTNAME}"
       interval: 30s
       timeout: 10s
       retries: 5
@@ -146,39 +143,14 @@ services:
       <<: *airflow-common-depends-on
       airflow-init:
         condition: service_completed_successfully
-    #user: "${AIRFLOW_UID:-1000}:${AIRFLOW_GID:-0}"
-    environment:
-      API_KEY: ${AIRFLOW_PROJ_DIR}
     profiles: ["etl"]
-
-  airflow-worker:
-    <<: *airflow-common
-    command: celery worker
-    healthcheck:
-      test: ["CMD-SHELL",'celery --app airflow.providers.celery.executors.celery_executor.app inspect ping -d "celery@$${HOSTNAME}" || celery --app airflow.executors.celery_executor.app inspect ping -d "celery@$${HOSTNAME}"']
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 30s
-    environment:
-      API_KEY: ${AIRFLOW_PROJ_DIR}
-      <<: *airflow-common-env
-      DUMB_INIT_SETSID: "0"
-    restart: always
-    depends_on:
-      <<: *airflow-common-depends-on
-      airflow-apiserver:
-        condition: service_healthy
-      airflow-init:
-        condition: service_completed_successfully
-    #user: "${AIRFLOW_UID:-1000}:${AIRFLOW_GID:-0}"
-    profiles: ["etl"]
-
   airflow-triggerer:
     <<: *airflow-common
     command: triggerer
     healthcheck:
-      test: ["CMD-SHELL", 'airflow jobs check --job-type TriggererJob --hostname "$${HOSTNAME}"']
+      test:
+        - CMD-SHELL
+        - airflow jobs check --job-type TriggererJob --hostname "$${HOSTNAME}"
       interval: 30s
       timeout: 10s
       retries: 5
@@ -195,107 +167,38 @@ services:
 
   airflow-init:
     <<: *airflow-common
+    #manually write env instead of common
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+      AIRFLOW__CORE__FERNET_KEY: ''
+      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+      AIRFLOW__CORE__EXECUTION_API_SERVER_URL: http://airflow-apiserver:8080/execution/
+      AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: 'true'
+      AIRFLOW_CONFIG: /opt/airflow/config/airflow.cfg
+      _AIRFLOW_DB_MIGRATE: 'true'
+      _AIRFLOW_WWW_USER_CREATE: 'true'
+      _AIRFLOW_WWW_USER_USERNAME: ${_AIRFLOW_WWW_USER_USERNAME:-airflow}
+      _AIRFLOW_WWW_USER_PASSWORD: ${_AIRFLOW_WWW_USER_PASSWORD:-airflow}
+      _AIRFLOW_WWW_USER_EMAIL: ${_AIRFLOW_WWW_USER_EMAIL:-admin@example.com}
+      _AIRFLOW_WWW_USER_FIRSTNAME: ${_AIRFLOW_WWW_USER_FIRSTNAME:-Admin}
+      _AIRFLOW_WWW_USER_LASTNAME: ${_AIRFLOW_WWW_USER_LASTNAME:-User}
+      _PIP_ADDITIONAL_REQUIREMENTS: ''
     entrypoint: /bin/bash
-    # yamllint disable rule:line-length UID GID like host with id in the console
-    profiles: ["etl"]
     command:
       - -c
       - |
         export AIRFLOW_UID=${AIRFLOW_UID:-1000}
         export AIRFLOW_GID=${AIRFLOW_GID:-0}   
-
-        if [[ -z "${AIRFLOW_UID}" ]]; then
-          echo
-          echo -e "\033[1;33mWARNING!!!: AIRFLOW_UID not set!\e[0m"
-          echo "If you are on Linux, you SHOULD follow the instructions below to set "
-          echo "AIRFLOW_UID environment variable, otherwise files will be owned by root."
-          echo "For other operating systems you can get rid of the warning with manually created .env file:"
-          echo "    See: https://airflow.apache.org/docs/apache-airflow/stable/howto/docker-compose/index.html#setting-the-right-airflow-user"
-          echo
-          export AIRFLOW_UID=$(id -u)
-        fi
-        one_meg=1048576
-        mem_available=$$(($$(getconf _PHYS_PAGES) * $$(getconf PAGE_SIZE) / one_meg))
-        cpus_available=$$(grep -cE 'cpu[0-9]+' /proc/stat)
-        disk_available=$$(df / | tail -1 | awk '{print $$4}')
-        warning_resources="false"
-        if (( mem_available < 4000 )) ; then
-          echo
-          echo -e "\033[1;33mWARNING!!!: Not enough memory available for Docker.\e[0m"
-          echo "At least 4GB of memory required. You have $$(numfmt --to iec $$((mem_available * one_meg)))"
-          echo
-          warning_resources="true"
-        fi
-        if (( cpus_available < 2 )); then
-          echo
-          echo -e "\033[1;33mWARNING!!!: Not enough CPUS available for Docker.\e[0m"
-          echo "At least 2 CPUs recommended. You have $${cpus_available}"
-          echo
-          warning_resources="true"
-        fi
-        if (( disk_available < one_meg * 10 )); then
-          echo
-          echo -e "\033[1;33mWARNING!!!: Not enough Disk space available for Docker.\e[0m"
-          echo "At least 10 GBs recommended. You have $$(numfmt --to iec $$((disk_available * 1024 )))"
-          echo
-          warning_resources="true"
-        fi
-        if [[ $${warning_resources} == "true" ]]; then
-          echo
-          echo -e "\033[1;33mWARNING!!!: You have not enough resources to run Airflow (see above)!\e[0m"
-          echo "Please follow the instructions to increase amount of resources available:"
-          echo "   https://airflow.apache.org/docs/apache-airflow/stable/howto/docker-compose/index.html#before-you-begin"
-          echo
-        fi
-        echo
-        echo "Creating missing opt dirs if missing:"
-        echo
-        mkdir -v -p /opt/airflow/{logs,dags,plugins,config,data,tmp}
-        echo
-        echo "Airflow version:"
-        /entrypoint airflow version
-        echo
-        echo "Files in shared volumes:"
-        echo
-        ls -la /opt/airflow/{logs,dags,plugins,config,data,tmp}
-        echo
-        echo "Running airflow config list to create default config file if missing."
-        echo
-        /entrypoint airflow config list >/dev/null
-        echo "Running airflow db upgrade to initialize the database schema."
-        /entrypoint airflow db upgrade
-        echo
-        echo "Files in shared volumes:"
-        echo
-        ls -la /opt/airflow/{logs,dags,plugins,config,data,tmp}
-        echo
-        echo "Change ownership of files in /opt/airflow to ${AIRFLOW_UID}:${AIRFLOW_GID}"
-        echo
-        chown -R "${AIRFLOW_UID}:${AIRFLOW_GID}" /opt/airflow/
-        echo
-        echo "Change ownership of files in shared volumes to ${AIRFLOW_UID}:${AIRFLOW_GID}"
-        echo
-        chown -v -R "${AIRFLOW_UID}:${AIRFLOW_GID}" /opt/airflow/{logs,dags,plugins,config,data,tmp}
-        echo
-        echo "Files in shared volumes:"
-        echo
-        ls -la /opt/airflow/{logs,dags,plugins,config,data,tmp}
-
-    # yamllint enable rule:line-length
-    environment:
-      <<: *airflow-common-env
-      _AIRFLOW_DB_MIGRATE: 'true'
-      _AIRFLOW_WWW_USER_CREATE: 'true'
-      _AIRFLOW_WWW_USER_USERNAME: ${_AIRFLOW_WWW_USER_USERNAME:-airflow}  
-      _AIRFLOW_WWW_USER_PASSWORD: ${_AIRFLOW_WWW_USER_PASSWORD:-airflow} 
-      _AIRFLOW_WWW_USER_EMAIL: ${_AIRFLOW_WWW_USER_EMAIL:-admin@example.com}
-      _AIRFLOW_WWW_USER_FIRSTNAME: ${_AIRFLOW_WWW_USER_FIRSTNAME:-Admin}
-      _AIRFLOW_WWW_USER_LASTNAME: ${_AIRFLOW_WWW_USER_LASTNAME:-User}
-      _PIP_ADDITIONAL_REQUIREMENTS: ''
-    #user: "${AIRFLOW_UID:-1000}:${AIRFLOW_GID:-0}"
+        mkdir -p /opt/airflow/{logs,dags,plugins,config,data,tmp}
+        
+        echo "Initializing Airflow database..."
+        /entrypoint airflow db migrate
+        
+        chown -R "${AIRFLOW_UID}:0" /opt/airflow/
+    profiles: ["etl"]
 
 volumes:
-  postgres_data:  #  PostgreSQL
-  #airflow_export: #   exports Excel inside docker volumes
-
-  
+  postgres_data:
